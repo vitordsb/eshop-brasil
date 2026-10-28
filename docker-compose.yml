@@ -1,0 +1,34 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: eshop-mongo
+    # Cache do WiredTiger limitado para rodar bem em notebook
+    command: ["--wiredTigerCacheSizeGB", "0.25"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-eshop_admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-troque-esta-senha}
+    ports:
+      - "127.0.0.1:27017:27017"   # exposto só na máquina local
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  app:
+    build: .
+    container_name: eshop-app
+    environment:
+      MONGO_URI: mongodb://${MONGO_USER:-eshop_admin}:${MONGO_PASSWORD:-troque-esta-senha}@mongo:27017/?authSource=admin
+      MONGO_DB: eshop_brasil
+      LGPD_SALT: ${LGPD_SALT:-troque-este-salt}
+    ports:
+      - "8501:8501"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+volumes:
+  mongo_data:
